@@ -3223,7 +3223,7 @@ where
   T: ?Sized,
 {
   /// Create a new [`Var<T>`] from a [`ScopedHandle`].
-  const fn new(handle: ScopedHandle) -> Self {
+  pub const fn new(handle: ScopedHandle) -> Self {
     Self(Expr::new(ErasedExpr::Var(handle)))
   }
 
@@ -3292,7 +3292,7 @@ where
 /// hierarchical: for each scope, a new namespace is created. The depth at which a namespace is located is referred to
 /// as its _subscope_.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-enum ScopedHandle {
+pub enum ScopedHandle {
   BuiltIn(BuiltIn),
   Global(u16),
   FunArg(u16),
@@ -3319,7 +3319,7 @@ impl ScopedHandle {
     Self::FunVar { subscope, handle }
   }
 
-  fn uniform(name: impl Into<String>) -> Self {
+  pub fn uniform(name: impl Into<String>) -> Self {
     Self::Uniform(name.into())
   }
 }
@@ -3654,6 +3654,17 @@ impl<T> Swizzlable<[SwizzleSelector; 2]> for Expr<V2<T>> {
   }
 }
 
+impl<T> Swizzlable<[SwizzleSelector; 3]> for Expr<V2<T>> {
+  type Output = Expr<V3<T>>;
+
+  fn swizzle(&self, [x, y, z]: [SwizzleSelector; 3]) -> Self::Output {
+    Expr::new(ErasedExpr::Swizzle(
+      Box::new(self.erased.clone()),
+      Swizzle::D3(x, y, z)
+    ))
+  }
+}
+
 // 3D
 impl<T> Swizzlable<SwizzleSelector> for Expr<V3<T>> {
   type Output = Expr<T>;
@@ -3878,6 +3889,27 @@ macro_rules! sw_extract {
   };
 }
 
+// Swizzle shortcuts
+pub trait V2Swizzlable<T> {
+  fn xyx(&self) -> Expr<V3<T>>;
+}
+
+pub trait V3Swizzlable<T> {
+  fn xy(&self) -> Expr<V2<T>>;
+}
+
+impl<T> V3Swizzlable<T> for Expr<V3<T>> {
+  fn xy(&self) -> Expr<V2<T>> {
+      self.swizzle([SwizzleSelector::X, SwizzleSelector::Y])
+  }
+}
+
+impl<T> V2Swizzlable<T> for Expr<V2<T>> {
+  fn xyx(&self) -> Expr<V3<T>> {
+      self.swizzle([SwizzleSelector::X, SwizzleSelector::Y, SwizzleSelector::X])
+  }
+}
+
 /// Input declaration.
 ///
 /// # Examples
@@ -3958,7 +3990,7 @@ macro_rules! uniforms {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-enum BuiltIn {
+pub enum BuiltIn {
   Vertex(VertexBuiltIn),
   TessCtrl(TessCtrlBuiltIn),
   TessEval(TessEvalBuiltIn),
@@ -3967,7 +3999,7 @@ enum BuiltIn {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-enum VertexBuiltIn {
+pub enum VertexBuiltIn {
   VertexID,
   InstanceID,
   BaseVertex,
@@ -3978,7 +4010,7 @@ enum VertexBuiltIn {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-enum TessCtrlBuiltIn {
+pub enum TessCtrlBuiltIn {
   MaxPatchVerticesIn,
   PatchVerticesIn,
   PrimitiveID,
@@ -3994,7 +4026,7 @@ enum TessCtrlBuiltIn {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-enum TessEvalBuiltIn {
+pub enum TessEvalBuiltIn {
   TessCoord,
   MaxPatchVerticesIn,
   PatchVerticesIn,
@@ -4010,7 +4042,7 @@ enum TessEvalBuiltIn {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-enum GeometryBuiltIn {
+pub enum GeometryBuiltIn {
   In,
   Out,
   Position,
@@ -4025,7 +4057,7 @@ enum GeometryBuiltIn {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-enum FragmentBuiltIn {
+pub enum FragmentBuiltIn {
   FragCoord,
   FrontFacing,
   PointCoord,
@@ -5797,3 +5829,15 @@ mod tests {
     assert_eq!(xyzw.w().erased, w.erased);
   }
 }
+
+
+
+// impl<T> ops::Add<Expr<V3<T>>> for Expr<T> {
+//   type Output = Expr<V3<T>>;
+
+//   fn add(self, rhs: Expr<V3<T>>) -> Self::Output {
+//     Expr::new(
+//       ErasedExpr::Add(Box::new(self), Box::new(rhs))
+//     )
+//   }
+// }

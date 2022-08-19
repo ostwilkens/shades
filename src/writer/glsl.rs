@@ -34,7 +34,7 @@ pub fn write_shader(f: &mut impl fmt::Write, shader: impl AsRef<Shader>) -> Resu
 }
 
 fn write_main_fun(f: &mut impl fmt::Write, fun: &ErasedFun) -> Result<(), fmt::Error> {
-  f.write_str("\nvoid main() {\n")?;
+  f.write_str("\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n")?;
   write_scope(f, &fun.scope, 1)?;
   f.write_str("}")
 }
@@ -61,7 +61,7 @@ fn write_fun_def(f: &mut impl fmt::Write, handle: u16, fun: &ErasedFun) -> Resul
   f.write_str("(")?;
   if !fun.args.is_empty() {
     write_type(f, &fun.args[0])?;
-    f.write_str("arg_0")?;
+    f.write_str(" arg_0")?;
 
     for (i, arg) in fun.args.iter().enumerate().skip(1) {
       f.write_str(", ")?;
