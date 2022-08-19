@@ -34,7 +34,7 @@ pub fn write_shader(f: &mut impl fmt::Write, shader: impl AsRef<Shader>) -> Resu
 }
 
 fn write_main_fun(f: &mut impl fmt::Write, fun: &ErasedFun) -> Result<(), fmt::Error> {
-  f.write_str("\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n")?;
+  f.write_str("\nvoid main() {\n")?;
   write_scope(f, &fun.scope, 1)?;
   f.write_str("}")
 }
