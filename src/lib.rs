@@ -3898,6 +3898,16 @@ pub trait V3Swizzlable<T> {
   fn xy(&self) -> Expr<V2<T>>;
 }
 
+pub trait V4Swizzlable<T> {
+  fn xy(&self) -> Expr<V2<T>>;
+}
+
+impl<T> V4Swizzlable<T> for Expr<V4<T>> {
+    fn xy(&self) -> Expr<V2<T>> {
+        self.swizzle([SwizzleSelector::X, SwizzleSelector::Y])
+    }
+}
+
 impl<T> V3Swizzlable<T> for Expr<V3<T>> {
   fn xy(&self) -> Expr<V2<T>> {
       self.swizzle([SwizzleSelector::X, SwizzleSelector::Y])
