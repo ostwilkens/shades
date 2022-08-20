@@ -2648,31 +2648,34 @@ where
     &mut self,
     init_value: impl Into<Expr<T>>,
     condition: impl FnOnce(&Expr<T>) -> Expr<bool>,
-    iter_fold: impl FnOnce(&Expr<T>) -> Expr<T>,
+    // iter_fold: impl FnOnce(&Expr<T>) -> Expr<T>,
     body: impl FnOnce(&mut LoopScope<R>, &Expr<T>),
   ) where
     T: ToType,
   {
     let mut scope = LoopScope::new(self.deeper());
 
-    // bind the init value so that it’s available in all closures
-    let init_var = scope.var(init_value);
+    let init_expr: Expr<T> = init_value.into();
+
+    let init_var = Var::new(ScopedHandle::fun_var(scope.erased.id, 0));
+    scope.erased.next_var += 1;
 
     let condition = condition(&init_var);
 
     // generate the “post expr”, which is basically the free from of the third part of the for loop; people usually
     // set this to ++i, i++, etc., but in our case, the expression is to treat as a fold’s accumulator
-    let post_expr = iter_fold(&init_var);
+    // let post_expr = iter_fold(&init_var);
 
     body(&mut scope, &init_var);
 
-    let scope = Scope::from(scope);
+    let mut scope = Scope::from(scope);
+
     self.erased.instructions.push(ScopeInstr::For {
       init_ty: T::ty(),
       init_handle: ScopedHandle::fun_var(scope.erased.id, 0),
-      init_expr: init_var.to_expr().erased,
+      init_expr: init_expr.erased,
       condition: condition.erased,
-      post_expr: post_expr.erased,
+      // post_expr: post_expr.erased,
       scope: scope.erased,
     });
   }
@@ -3357,7 +3360,7 @@ enum ScopeInstr {
     init_handle: ScopedHandle,
     init_expr: ErasedExpr,
     condition: ErasedExpr,
-    post_expr: ErasedExpr,
+    // post_expr: ErasedExpr,
     scope: ErasedScope,
   },
 
@@ -3660,7 +3663,7 @@ impl<T> Swizzlable<[SwizzleSelector; 3]> for Expr<V2<T>> {
   fn swizzle(&self, [x, y, z]: [SwizzleSelector; 3]) -> Self::Output {
     Expr::new(ErasedExpr::Swizzle(
       Box::new(self.erased.clone()),
-      Swizzle::D3(x, y, z)
+      Swizzle::D3(x, y, z),
     ))
   }
 }
@@ -3892,6 +3895,8 @@ macro_rules! sw_extract {
 // Swizzle shortcuts
 pub trait V2Swizzlable<T> {
   fn xyx(&self) -> Expr<V3<T>>;
+  fn yxx(&self) -> Expr<V3<T>>;
+  fn xxy(&self) -> Expr<V3<T>>;
 }
 
 pub trait V3Swizzlable<T> {
@@ -3900,23 +3905,34 @@ pub trait V3Swizzlable<T> {
 
 pub trait V4Swizzlable<T> {
   fn xy(&self) -> Expr<V2<T>>;
+  fn xyz(&self) -> Expr<V3<T>>;
 }
 
 impl<T> V4Swizzlable<T> for Expr<V4<T>> {
-    fn xy(&self) -> Expr<V2<T>> {
-        self.swizzle([SwizzleSelector::X, SwizzleSelector::Y])
-    }
+  fn xy(&self) -> Expr<V2<T>> {
+    self.swizzle([SwizzleSelector::X, SwizzleSelector::Y])
+  }
+
+  fn xyz(&self) -> Expr<V3<T>> {
+    self.swizzle([SwizzleSelector::X, SwizzleSelector::Y, SwizzleSelector::X])
+  }
 }
 
 impl<T> V3Swizzlable<T> for Expr<V3<T>> {
   fn xy(&self) -> Expr<V2<T>> {
-      self.swizzle([SwizzleSelector::X, SwizzleSelector::Y])
+    self.swizzle([SwizzleSelector::X, SwizzleSelector::Y])
   }
 }
 
 impl<T> V2Swizzlable<T> for Expr<V2<T>> {
   fn xyx(&self) -> Expr<V3<T>> {
-      self.swizzle([SwizzleSelector::X, SwizzleSelector::Y, SwizzleSelector::X])
+    self.swizzle([SwizzleSelector::X, SwizzleSelector::Y, SwizzleSelector::X])
+  }
+  fn yxx(&self) -> Expr<V3<T>> {
+    self.swizzle([SwizzleSelector::Y, SwizzleSelector::X, SwizzleSelector::X])
+  }
+  fn xxy(&self) -> Expr<V3<T>> {
+    self.swizzle([SwizzleSelector::X, SwizzleSelector::X, SwizzleSelector::Y])
   }
 }
 
@@ -5109,14 +5125,14 @@ macro_rules! impl_Mix {
       fn step(&self, edge: Expr<$q>) -> Self {
         Expr::new(ErasedExpr::FunCall(
           ErasedFunHandle::Step,
-          vec![self.erased.clone(), edge.erased],
+          vec![edge.erased, self.erased.clone()],
         ))
       }
 
       fn smooth_step(&self, edge_a: Expr<$q>, edge_b: Expr<$q>) -> Self {
         Expr::new(ErasedExpr::FunCall(
           ErasedFunHandle::SmoothStep,
-          vec![self.erased.clone(), edge_a.erased, edge_b.erased],
+          vec![edge_a.erased, edge_b.erased, self.erased.clone()],
         ))
       }
     }
@@ -5645,7 +5661,7 @@ mod tests {
     scope.loop_for(
       0,
       |a| a.lt(lit!(10)),
-      |a| a + 1,
+      // |a| a + 1,
       |s, a| {
         s.leave(a);
       },
@@ -5680,10 +5696,10 @@ mod tests {
           Box::new(ErasedExpr::Var(ScopedHandle::fun_var(1, 0))),
           Box::new(ErasedExpr::LitInt(10)),
         ),
-        post_expr: ErasedExpr::Add(
-          Box::new(ErasedExpr::Var(ScopedHandle::fun_var(1, 0))),
-          Box::new(ErasedExpr::LitInt(1)),
-        ),
+        // post_expr: ErasedExpr::Add(
+        //   Box::new(ErasedExpr::Var(ScopedHandle::fun_var(1, 0))),
+        //   Box::new(ErasedExpr::LitInt(1)),
+        // ),
         scope: loop_scope,
       }
     );
@@ -5839,8 +5855,6 @@ mod tests {
     assert_eq!(xyzw.w().erased, w.erased);
   }
 }
-
-
 
 // impl<T> ops::Add<Expr<V3<T>>> for Expr<T> {
 //   type Output = Expr<V3<T>>;

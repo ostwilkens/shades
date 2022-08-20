@@ -153,7 +153,7 @@ fn write_scope(
         init_handle,
         init_expr,
         condition,
-        post_expr,
+        // post_expr,
         scope,
       } => {
         f.write_str("for (")?;
@@ -173,8 +173,8 @@ fn write_scope(
         // iteration; we basically write <init-expr> = <next-expr> in a fold-like way, so we need to re-use the
         // init_handle
         write_scoped_handle(f, init_handle)?;
-        f.write_str(" = ")?;
-        write_expr(f, post_expr)?;
+        f.write_str("++")?;
+        // write_expr(f, post_expr)?;
         f.write_str(") {\n")?;
 
         // scope
