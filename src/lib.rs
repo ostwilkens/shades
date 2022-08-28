@@ -3917,7 +3917,7 @@ impl<T> V4Swizzlable<T> for Expr<V4<T>> {
   }
 
   fn xyz(&self) -> Expr<V3<T>> {
-    self.swizzle([SwizzleSelector::X, SwizzleSelector::Y, SwizzleSelector::X])
+    self.swizzle([SwizzleSelector::X, SwizzleSelector::Y, SwizzleSelector::Z])
   }
 }
 
